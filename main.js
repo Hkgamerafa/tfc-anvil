@@ -678,10 +678,21 @@ function extractDataFromImage(buffer, w, h) {
     }
 
     console.log("Scanning green slider...");
-    const [greenX, greenY, greenH] = scanY(greenSliderColor, redY + redH);
-    console.log("Green slider scan result:", greenX, greenY, greenH);
-    if (greenY !== redY + redH + 5 * scale) {
-        console.warn("Green slider not correctly positioned relative to red slider");
+    let greenX = -1, greenY = -1, greenH = -1;
+    for (const tol of [30, 50, 70, 90]) {
+        console.log(`Trying green scan with tolerance ${tol}`);
+        [greenX, greenY, greenH] = scanY(greenSliderColor, redY + redH, 0, tol);
+        if (greenX !== -1) {
+            console.log(`Green slider found with tolerance ${tol}`);
+            if (greenY !== redY + redH + 5 * scale) {
+                console.warn("Green slider not correctly positioned relative to red slider");
+                continue;
+            }
+            break;
+        }
+    }
+    if (greenX === -1) {
+        console.error("Green slider not found even with increased tolerance.");
         return;
     }
 
