@@ -718,33 +718,51 @@ window.addEventListener('paste', async ev => {
     }
 });
 */
+// Alternative to paste: upload or drag-and-drop a screenshot
 window.addEventListener('DOMContentLoaded', () => {
-    // Create an upload input
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.style.display = 'block';
-    input.style.margin = '1em auto';
-    input.id = 'screenshot-upload';
-    document.body.prepend(input);
-
-    // Optional label
+    // Create upload label + input
     const label = document.createElement('label');
     label.htmlFor = 'screenshot-upload';
-    label.textContent = 'Upload your interface screenshot:';
+    label.textContent = 'Upload or drag your interface screenshot below:';
     label.style.display = 'block';
     label.style.textAlign = 'center';
     label.style.fontWeight = 'bold';
     label.style.marginTop = '1em';
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.id = 'screenshot-upload';
+    input.style.display = 'block';
+    input.style.margin = '1em auto';
+
+    // Drop zone (visual feedback area)
+    const dropZone = document.createElement('div');
+    dropZone.id = 'drop-zone';
+    dropZone.textContent = 'Drag image here';
+    dropZone.style.width = '300px';
+    dropZone.style.height = '150px';
+    dropZone.style.border = '2px dashed #888';
+    dropZone.style.borderRadius = '10px';
+    dropZone.style.display = 'flex';
+    dropZone.style.alignItems = 'center';
+    dropZone.style.justifyContent = 'center';
+    dropZone.style.margin = '1em auto';
+    dropZone.style.color = '#555';
+    dropZone.style.fontSize = '16px';
+    dropZone.style.transition = 'background 0.2s, border-color 0.2s';
+
+    document.body.prepend(dropZone);
+    document.body.prepend(input);
     document.body.prepend(label);
 
-    input.addEventListener('change', async (ev) => {
-        const file = ev.target.files[0];
+    // Common image processing function
+    async function handleImageFile(file) {
         if (!file) {
-            console.warn("No file selected.");
+            console.warn("No file provided.");
             return;
         }
-        console.log("File selected:", file.name, file.type, file.size, "bytes");
+        console.log("File received:", file.name, file.type, file.size, "bytes");
 
         if (!file.type.startsWith('image/')) {
             console.error("Selected file is not an image.");
@@ -766,7 +784,7 @@ window.addEventListener('DOMContentLoaded', () => {
             console.log("Passing image data to extractDataFromImage...");
             extractDataFromImage(buf.data, buf.width, buf.height);
 
-            // Optional preview image
+            // Optional preview
             let preview = document.getElementById('uploaded-preview');
             if (!preview) {
                 preview = document.createElement('img');
@@ -778,10 +796,37 @@ window.addEventListener('DOMContentLoaded', () => {
             }
             preview.src = URL.createObjectURL(file);
 
-            // Clean up
             canvas.remove();
         } catch (err) {
-            console.error("Error processing uploaded image:", err);
+            console.error("Error processing image:", err);
         }
+    }
+
+    // Handle normal file upload
+    input.addEventListener('change', ev => {
+        handleImageFile(ev.target.files[0]);
+    });
+
+    // Handle drag-and-drop
+    dropZone.addEventListener('dragover', ev => {
+        ev.preventDefault();
+        dropZone.style.background = '#eef';
+        dropZone.style.borderColor = '#44f';
+    });
+
+    dropZone.addEventListener('dragleave', ev => {
+        ev.preventDefault();
+        dropZone.style.background = '';
+        dropZone.style.borderColor = '#888';
+    });
+
+    dropZone.addEventListener('drop', ev => {
+        ev.preventDefault();
+        dropZone.style.background = '';
+        dropZone.style.borderColor = '#888';
+
+        const file = ev.dataTransfer.files[0];
+        handleImageFile(file);
     });
 });
+
