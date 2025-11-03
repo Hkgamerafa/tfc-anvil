@@ -559,38 +559,61 @@ function refreshHints(greenProgress = undefined) {
 function extractDataFromImage(buffer, w, h) {
     console.log("extractDataFromImage called with image size:", w, "x", h);
 
-    function findPixel(p, fromY = 0, fromX = 0, tolerance = 30) {
+    function findPixel(p, fromY = 0, fromX = 0, tolerance = 60) {
+        console.log(`findPixel(${p}) scanning from (${fromX}, ${fromY}) with tolerance ${tolerance}`);
         let idx = (fromY * w + fromX) * 4;
+        const [rTarget, gTarget, bTarget] = p;
+    
         for (let y = fromY; y < h; y++) {
             for (let x = fromX; x < w; x++, idx += 4) {
-                const dr = Math.abs(p[0] - buffer[idx]);
-                const dg = Math.abs(p[1] - buffer[idx + 1]);
-                const db = Math.abs(p[2] - buffer[idx + 2]);
-                if (dr <= tolerance && dg <= tolerance && db <= tolerance) {
-                    console.log(`findPixel(${p}) found match at (${x}, ${y})`);
+                const r = buffer[idx];
+                const g = buffer[idx + 1];
+                const b = buffer[idx + 2];
+                
+                // Compute Euclidean distance in RGB space
+                const dist = Math.sqrt(
+                    (rTarget - r) ** 2 +
+                    (gTarget - g) ** 2 +
+                    (bTarget - b) ** 2
+                );
+    
+                if (dist <= tolerance) {
+                    console.log(`Match found at (${x}, ${y}) with distance ${dist.toFixed(1)} [${r},${g},${b}]`);
                     return [x, y];
                 }
             }
             fromX = 0;
         }
+    
         console.warn(`findPixel(${p}) no match found`);
         return [-1, -1];
     }
-
-    function findPixelReverse(p, fromY = h - 1, fromX = w - 1, tolerance = 30) {
+    
+    function findPixelReverse(p, fromY = h - 1, fromX = w - 1, tolerance = 60) {
+        console.log(`findPixelReverse(${p}) scanning from (${fromX}, ${fromY}) with tolerance ${tolerance}`);
         let idx = (fromY * w + fromX) * 4;
+        const [rTarget, gTarget, bTarget] = p;
+    
         for (let y = fromY; y >= 0; y--) {
             for (let x = fromX; x >= 0; x--, idx -= 4) {
-                const dr = Math.abs(p[0] - buffer[idx]);
-                const dg = Math.abs(p[1] - buffer[idx + 1]);
-                const db = Math.abs(p[2] - buffer[idx + 2]);
-                if (dr <= tolerance && dg <= tolerance && db <= tolerance) {
-                    console.log(`findPixelReverse(${p}) found match at (${x}, ${y})`);
+                const r = buffer[idx];
+                const g = buffer[idx + 1];
+                const b = buffer[idx + 2];
+    
+                const dist = Math.sqrt(
+                    (rTarget - r) ** 2 +
+                    (gTarget - g) ** 2 +
+                    (bTarget - b) ** 2
+                );
+    
+                if (dist <= tolerance) {
+                    console.log(`Reverse match at (${x}, ${y}) with distance ${dist.toFixed(1)} [${r},${g},${b}]`);
                     return [x, y];
                 }
             }
             fromX = w - 1;
         }
+    
         console.warn(`findPixelReverse(${p}) no match found`);
         return [-1, -1];
     }
@@ -633,9 +656,17 @@ function extractDataFromImage(buffer, w, h) {
     const whiteColor = [255, 255, 255];
 
     console.log("Starting red slider scan...");
-    const [redX, redY, redH] = scanY(redSliderColor);
-    if (redX === -1 || redY === -1 || redH === -1) {
-        console.warn("Red slider not found");
+    let redX = -1, redY = -1, redH = -1;
+    for (const tol of [30, 50, 70, 90]) {
+        console.log(`Trying red scan with tolerance ${tol}`);
+        [redX, redY, redH] = scanY(redSliderColor, 0, 0, tol);
+        if (redX !== -1) {
+            console.log(`Red slider found with tolerance ${tol}`);
+            break;
+        }
+    }
+    if (redX === -1) {
+        console.error("Red slider not found even with increased tolerance.");
         return;
     }
 
