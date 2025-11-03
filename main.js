@@ -557,6 +557,8 @@ function refreshHints(greenProgress = undefined) {
 }
 
 function extractDataFromImage(buffer, w, h) {
+    console.log("extractDataFromImage called with image size:", w, "x", h);
+
     function findPixel(p, fromY = 0, fromX = 0, tolerance = 30) {
         let idx = (fromY * w + fromX) * 4;
         for (let y = fromY; y < h; y++) {
@@ -565,15 +567,17 @@ function extractDataFromImage(buffer, w, h) {
                 const dg = Math.abs(p[1] - buffer[idx + 1]);
                 const db = Math.abs(p[2] - buffer[idx + 2]);
                 if (dr <= tolerance && dg <= tolerance && db <= tolerance) {
+                    console.log(`findPixel(${p}) found match at (${x}, ${y})`);
                     return [x, y];
                 }
             }
             fromX = 0;
         }
+        console.warn(`findPixel(${p}) no match found`);
         return [-1, -1];
     }
 
-    function findPixelReverse(p, fromY = h-1, fromX = w-1, tolerance = 30) {
+    function findPixelReverse(p, fromY = h - 1, fromX = w - 1, tolerance = 30) {
         let idx = (fromY * w + fromX) * 4;
         for (let y = fromY; y >= 0; y--) {
             for (let x = fromX; x >= 0; x--, idx -= 4) {
@@ -581,17 +585,18 @@ function extractDataFromImage(buffer, w, h) {
                 const dg = Math.abs(p[1] - buffer[idx + 1]);
                 const db = Math.abs(p[2] - buffer[idx + 2]);
                 if (dr <= tolerance && dg <= tolerance && db <= tolerance) {
+                    console.log(`findPixelReverse(${p}) found match at (${x}, ${y})`);
                     return [x, y];
                 }
             }
-            fromX = w-1;
+            fromX = w - 1;
         }
+        console.warn(`findPixelReverse(${p}) no match found`);
         return [-1, -1];
     }
 
     function scanY(p, fromY = 0, fromX = 0, tolerance = 30) {
-        let start = findPixel(p, fromY, fromX, tolerance);
-
+        const start = findPixel(p, fromY, fromX, tolerance);
         let pos = [...start];
         pos[1] += 1;
         let lastpos = start;
@@ -600,15 +605,15 @@ function extractDataFromImage(buffer, w, h) {
             lastpos = pos;
             pos = findPixel(p, lastY + 1, start[0], tolerance);
         }
-
-        return [start[0], start[1], lastpos[1] - start[1] + 1];
+        const result = [start[0], start[1], lastpos[1] - start[1] + 1];
+        console.log(`scanY(${p}) ->`, result);
+        return result;
     }
 
     function scanX(p, fromY = 0, fromX = 0, reverse = false, tolerance = 30) {
         const dir = reverse ? -1 : 1;
         const findFn = reverse ? findPixelReverse : findPixel;
-        let start = findFn(p, fromY, fromX, tolerance);
-
+        const start = findFn(p, fromY, fromX, tolerance);
         let pos = [...start];
         pos[0] += dir;
         let lastpos = start;
@@ -617,41 +622,82 @@ function extractDataFromImage(buffer, w, h) {
             lastpos = pos;
             pos = findFn(p, start[1], lastX + dir, tolerance);
         }
-
         const furthest = reverse ? Math.min : Math.max;
-        return [furthest(start[0], lastpos[0]), start[1], Math.abs(lastpos[0] - start[0]) + 1];
+        const result = [furthest(start[0], lastpos[0]), start[1], Math.abs(lastpos[0] - start[0]) + 1];
+        console.log(`scanX(${p}, reverse=${reverse}) ->`, result);
+        return result;
     }
 
     const greenSliderColor = [0, 255, 6];
     const redSliderColor = [255, 0, 0];
     const whiteColor = [255, 255, 255];
 
+    console.log("Starting red slider scan...");
     const [redX, redY, redH] = scanY(redSliderColor);
-    if (redX === -1 || redY === -1 || redH === -1) return; // red slider not found
-    
+    if (redX === -1 || redY === -1 || redH === -1) {
+        console.warn("Red slider not found");
+        return;
+    }
+
     const scale = Math.floor(redH / 2);
-    if (redH % scale !== 0) return; // incorrect size
-    
+    console.log("Red slider height:", redH, "-> scale:", scale);
+    if (redH % scale !== 0) {
+        console.warn("Incorrect red slider size");
+        return;
+    }
+
+    console.log("Scanning green slider...");
     const [greenX, greenY, greenH] = scanY(greenSliderColor, redY + redH);
-    if (greenY !== redY + redH + 5 * scale) return;
+    console.log("Green slider scan result:", greenX, greenY, greenH);
+    if (greenY !== redY + redH + 5 * scale) {
+        console.warn("Green slider not correctly positioned relative to red slider");
+        return;
+    }
+
     const [, , redW] = scanX(redSliderColor, redY, redX);
     const [, , greenW] = scanX(greenSliderColor, greenY, greenX);
-    if (greenX === -1 || greenY === -1 || greenH === -1) return; // green slider not found
-    if (greenH !== redH || redW !== greenW) return; // green and red sliders have different sizes
+    console.log("Red width:", redW, "Green width:", greenW);
 
-    const [startX,,] = scanX(whiteColor, greenY, greenX, true);
-    if (startX === -1) return;
+    if (greenX === -1 || greenY === -1 || greenH === -1) {
+        console.warn("Green slider not found");
+        return;
+    }
+    if (greenH !== redH || redW !== greenW) {
+        console.warn("Slider size mismatch");
+        return;
+    }
+
+    console.log("Scanning for white start...");
+    const [startX] = scanX(whiteColor, greenY, greenX, true);
+    if (startX === -1) {
+        console.warn("White reference not found");
+        return;
+    }
 
     const greenDist = greenX - startX;
     const redDist = redX - startX;
-
     const greenProgress = greenDist / scale - 3;
     const redProgress = redDist / scale - 3;
 
-    updateProgress(greenSlider, greenProgress);
-    updateProgress(redSlider, redProgress);
-    refreshHints();
+    console.log("Distances -> Green:", greenDist, "Red:", redDist);
+    console.log("Progress -> Green:", greenProgress, "Red:", redProgress);
+
+    // These might be undefined, so log before calling:
+    console.log("updateProgress and refreshHints availability:", typeof updateProgress, typeof refreshHints);
+    if (typeof updateProgress === "function") {
+        updateProgress(greenSlider, greenProgress);
+        updateProgress(redSlider, redProgress);
+    } else {
+        console.warn("updateProgress is not defined!");
+    }
+
+    if (typeof refreshHints === "function") {
+        refreshHints();
+    } else {
+        console.warn("refreshHints is not defined!");
+    }
 }
+
 
 window.addEventListener('paste', async ev => {
     const data = ev.clipboardData;
