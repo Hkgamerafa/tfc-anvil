@@ -740,32 +740,12 @@ function extractDataFromImage(buffer, w, h) {
     }
 }
 
-/*
-window.addEventListener('paste', async ev => {
-    const data = ev.clipboardData;
-    const blob = data.items[0].getAsFile();
-    if (blob && blob.type.startsWith('image')) {
-        ev.preventDefault();
-        const img = await createImageBitmap(blob);
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d', {
-            colorSpace: 'srgb'
-        });
-        ctx.drawImage(img, 0, 0, img.width, img.height);
-        const buf = ctx.getImageData(0, 0, img.width, img.height);
-        extractDataFromImage(buf.data, buf.width, buf.height);
-        canvas.remove();
-    }
-});
-*/
-// Alternative to paste: upload or drag-and-drop a screenshot
+// Paste, upload or drag-and-drop a screenshot
 window.addEventListener('DOMContentLoaded', () => {
     // Create upload label + input
     const label = document.createElement('label');
     label.htmlFor = 'screenshot-upload';
-    label.textContent = 'Upload or drag your interface screenshot below:';
+    label.textContent = 'Paste, upload or drag your interface screenshot below:';
     label.style.display = 'block';
     label.style.textAlign = 'center';
     label.style.fontWeight = 'bold';
@@ -781,7 +761,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // Drop zone (visual feedback area)
     const dropZone = document.createElement('div');
     dropZone.id = 'drop-zone';
-    dropZone.textContent = 'Drag image here';
+    dropZone.textContent = 'Paste or drag image here';
     dropZone.style.width = '300px';
     dropZone.style.height = '150px';
     dropZone.style.border = '2px dashed #888';
@@ -870,5 +850,21 @@ window.addEventListener('DOMContentLoaded', () => {
         const file = ev.dataTransfer.files[0];
         handleImageFile(file);
     });
-});
 
+    // Handle paste
+    window.addEventListener('paste', async ev => {
+    const items = ev.clipboardData?.items;
+    if (!items) return;
+
+    const imageItem = [...items].find(item => item.type.startsWith('image/'));
+    if (!imageItem) {
+        console.warn("No image found in clipboard data.");
+        return;
+    }
+
+    ev.preventDefault();
+    const blob = imageItem.getAsFile();
+    console.log("Clipboard image detected:", blob.type, blob.size, "bytes");
+    await handleImageFile(blob);
+    });
+});
