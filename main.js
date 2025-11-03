@@ -331,8 +331,15 @@ function refreshNextHints() {
 
         // Append to end of inventory
         const inventory = document.querySelector('.inventory');
-        if (inventory) inventory.appendChild(summaryEl);
-        else document.body.appendChild(summaryEl); // fallback
+        if (inventory) {
+            inventory.appendChild(summaryEl);
+            summaryEl.style.order = '999';
+            summaryEl.style.marginTop = '1em';
+            summaryEl.style.marginBottom = '0';
+            summaryEl.style.display = 'block';
+        } else {
+            document.body.appendChild(summaryEl); // fallback
+        }
     }
 
     summaryEl.textContent = summaryText || "No hints available";
@@ -860,7 +867,20 @@ window.addEventListener('DOMContentLoaded', () => {
                 preview.style.maxWidth = '300px';
                 preview.style.display = 'block';
                 preview.style.margin = '1em auto';
-                document.body.appendChild(preview);
+                preview.style.borderRadius = '8px';
+                preview.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
+                
+                // Place it above inventory, replacing drop zone
+                const inventory = document.querySelector('.inventory');
+                const dropZone = document.getElementById('drop-zone');
+                if (dropZone) dropZone.remove(); // hide drag area once image is uploaded
+                
+                if (inventory) {
+                    // insert preview *just before* the inventory section
+                    inventory.parentNode.insertBefore(preview, inventory);
+                } else {
+                    document.body.insertBefore(preview, document.body.firstChild);
+                }
             }
             preview.src = URL.createObjectURL(file);
 
