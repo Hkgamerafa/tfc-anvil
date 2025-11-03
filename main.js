@@ -276,6 +276,30 @@ function updateSteps() {
     });
 }
 
+function summarizeSteps(stepArray) {
+    if (!stepArray || stepArray.length === 0) return "";
+
+    // Convert step IDs to human-friendly names
+    const names = stepArray.map(s => nameMap[s] || s);
+
+    // Count consecutive repeats
+    const summarized = [];
+    let last = names[0];
+    let count = 1;
+    for (let i = 1; i < names.length; i++) {
+        if (names[i] === last) {
+            count++;
+        } else {
+            summarized.push(count > 1 ? `${last} (x${count})` : last);
+            last = names[i];
+            count = 1;
+        }
+    }
+    summarized.push(count > 1 ? `${last} (x${count})` : last);
+
+    return summarized.join(", ");
+}
+
 function refreshNextHints() {
     const toDisplay = (nextSteps || []).slice(-3).reverse();
     performHintsEls.forEach(el => el.replaceChildren([]));
@@ -289,7 +313,29 @@ function refreshNextHints() {
         } else {
             el.classList = 'performed hidden';
         }
-    })
+    });
+
+    // Build and show summary text
+    const summaryText = summarizeSteps((nextSteps || []).slice().reverse());
+    console.log("Hint Summary:", summaryText);
+
+    let summaryEl = document.getElementById('hint-summary');
+    if (!summaryEl) {
+        summaryEl = document.createElement('div');
+        summaryEl.id = 'hint-summary';
+        summaryEl.style.textAlign = 'center';
+        summaryEl.style.marginTop = '0.5em';
+        summaryEl.style.fontWeight = 'bold';
+        summaryEl.style.fontSize = '1em';
+        summaryEl.style.color = '#333';
+
+        // Append to end of inventory
+        const inventory = document.querySelector('.inventory');
+        if (inventory) inventory.appendChild(summaryEl);
+        else document.body.appendChild(summaryEl); // fallback
+    }
+
+    summaryEl.textContent = summaryText || "No hints available";
 }
 
 function expectationForStep(i, counted) {
