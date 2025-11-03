@@ -323,25 +323,27 @@ function refreshNextHints() {
     if (!summaryEl) {
         summaryEl = document.createElement('div');
         summaryEl.id = 'hint-summary';
-        summaryEl.style.textAlign = 'center';
-        summaryEl.style.marginTop = '0.5em';
-        summaryEl.style.fontWeight = 'bold';
-        summaryEl.style.fontSize = '1em';
-        summaryEl.style.color = '#333';
 
-        // Append to end of inventory
+        summaryEl.style.textAlign = 'center';
+        summaryEl.style.marginTop = 'auto';
+        summaryEl.style.fontWeight = 'bold';
+        summaryEl.style.fontSize = 'xx-small';
+        summaryEl.style.color = '#333';
+    
         const inventory = document.querySelector('.inventory');
         if (inventory) {
+            // Always append it as the last child
             inventory.appendChild(summaryEl);
-            summaryEl.style.order = '999';
-            summaryEl.style.marginTop = '1em';
-            summaryEl.style.marginBottom = '0';
-            summaryEl.style.display = 'block';
+            inventory.style.display = 'flex';
+            inventory.style.flexDirection = 'column';
         } else {
-            document.body.appendChild(summaryEl); // fallback
+            document.body.appendChild(summaryEl);
         }
     }
-
+    
+    // move it to the bottom explicitly
+    summaryEl.parentNode?.appendChild(summaryEl);
+    
     summaryEl.textContent = summaryText || "No hints available";
 }
 
@@ -843,6 +845,10 @@ window.addEventListener('DOMContentLoaded', () => {
             console.error("Selected file is not an image.");
             return;
         }
+
+        // Hide the placeholder drop zone once an image is provided
+        const dropZone = document.getElementById('drop-zone');
+        if (dropZone) dropZone.style.display = 'none';
 
         try {
             const img = await createImageBitmap(file);
