@@ -698,7 +698,7 @@ function extractDataFromImage(buffer, w, h) {
     }
 }
 
-
+/*
 window.addEventListener('paste', async ev => {
     const data = ev.clipboardData;
     const blob = data.items[0].getAsFile();
@@ -716,4 +716,72 @@ window.addEventListener('paste', async ev => {
         extractDataFromImage(buf.data, buf.width, buf.height);
         canvas.remove();
     }
+});
+*/
+window.addEventListener('DOMContentLoaded', () => {
+    // Create an upload input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'block';
+    input.style.margin = '1em auto';
+    input.id = 'screenshot-upload';
+    document.body.prepend(input);
+
+    // Optional label
+    const label = document.createElement('label');
+    label.htmlFor = 'screenshot-upload';
+    label.textContent = 'Upload your interface screenshot:';
+    label.style.display = 'block';
+    label.style.textAlign = 'center';
+    label.style.fontWeight = 'bold';
+    label.style.marginTop = '1em';
+    document.body.prepend(label);
+
+    input.addEventListener('change', async (ev) => {
+        const file = ev.target.files[0];
+        if (!file) {
+            console.warn("No file selected.");
+            return;
+        }
+        console.log("File selected:", file.name, file.type, file.size, "bytes");
+
+        if (!file.type.startsWith('image/')) {
+            console.error("Selected file is not an image.");
+            return;
+        }
+
+        try {
+            const img = await createImageBitmap(file);
+            console.log("Loaded image:", img.width, "x", img.height);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+
+            const ctx = canvas.getContext('2d', { colorSpace: 'srgb' });
+            ctx.drawImage(img, 0, 0, img.width, img.height);
+
+            const buf = ctx.getImageData(0, 0, img.width, img.height);
+            console.log("Passing image data to extractDataFromImage...");
+            extractDataFromImage(buf.data, buf.width, buf.height);
+
+            // Optional preview image
+            let preview = document.getElementById('uploaded-preview');
+            if (!preview) {
+                preview = document.createElement('img');
+                preview.id = 'uploaded-preview';
+                preview.style.maxWidth = '300px';
+                preview.style.display = 'block';
+                preview.style.margin = '1em auto';
+                document.body.appendChild(preview);
+            }
+            preview.src = URL.createObjectURL(file);
+
+            // Clean up
+            canvas.remove();
+        } catch (err) {
+            console.error("Error processing uploaded image:", err);
+        }
+    });
 });
