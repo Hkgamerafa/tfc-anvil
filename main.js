@@ -276,6 +276,30 @@ function updateSteps() {
     });
 }
 
+function summarizeSteps(stepArray) {
+    if (!stepArray || stepArray.length === 0) return "";
+
+    // Convert step IDs to human-friendly names
+    const names = stepArray.map(s => nameMap[s] || s);
+
+    // Count consecutive repeats
+    const summarized = [];
+    let last = names[0];
+    let count = 1;
+    for (let i = 1; i < names.length; i++) {
+        if (names[i] === last) {
+            count++;
+        } else {
+            summarized.push(count > 1 ? `${last} (x${count})` : last);
+            last = names[i];
+            count = 1;
+        }
+    }
+    summarized.push(count > 1 ? `${last} (x${count})` : last);
+
+    return summarized.join(", ");
+}
+
 function refreshNextHints() {
     const toDisplay = (nextSteps || []).slice(-3).reverse();
     performHintsEls.forEach(el => el.replaceChildren([]));
@@ -289,7 +313,38 @@ function refreshNextHints() {
         } else {
             el.classList = 'performed hidden';
         }
-    })
+    });
+
+    // Build and show summary text
+    const summaryText = summarizeSteps((nextSteps || []).slice().reverse());
+    console.log("Hint Summary:", summaryText);
+
+    let summaryEl = document.getElementById('hint-summary');
+    if (!summaryEl) {
+        summaryEl = document.createElement('div');
+        summaryEl.id = 'hint-summary';
+
+        summaryEl.style.textAlign = 'center';
+        summaryEl.style.marginTop = 'auto';
+        summaryEl.style.fontWeight = 'bold';
+        summaryEl.style.fontSize = 'xx-small';
+        summaryEl.style.color = '#333';
+    
+        const inventory = document.querySelector('.inventory');
+        if (inventory) {
+            // Always append it as the last child
+            inventory.appendChild(summaryEl);
+            inventory.style.display = 'flex';
+            inventory.style.flexDirection = 'column';
+        } else {
+            document.body.appendChild(summaryEl);
+        }
+    }
+    
+    // move it to the bottom explicitly
+    summaryEl.parentNode?.appendChild(summaryEl);
+    
+    summaryEl.textContent = summaryText || "No hints available";
 }
 
 function expectationForStep(i, counted) {
@@ -791,6 +846,10 @@ window.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Hide the placeholder drop zone once an image is provided
+        const dropZone = document.getElementById('drop-zone');
+        if (dropZone) dropZone.style.display = 'none';
+
         try {
             const img = await createImageBitmap(file);
             console.log("Loaded image:", img.width, "x", img.height);
@@ -814,7 +873,20 @@ window.addEventListener('DOMContentLoaded', () => {
                 preview.style.maxWidth = '300px';
                 preview.style.display = 'block';
                 preview.style.margin = '1em auto';
-                document.body.appendChild(preview);
+                preview.style.borderRadius = '8px';
+                preview.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
+                
+                // Place it above inventory, replacing drop zone
+                const inventory = document.querySelector('.inventory');
+                const dropZone = document.getElementById('drop-zone');
+                if (dropZone) dropZone.remove(); // hide drag area once image is uploaded
+                
+                if (inventory) {
+                    // insert preview *just before* the inventory section
+                    inventory.parentNode.insertBefore(preview, inventory);
+                } else {
+                    document.body.insertBefore(preview, document.body.firstChild);
+                }
             }
             preview.src = URL.createObjectURL(file);
 
