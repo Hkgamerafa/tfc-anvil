@@ -141,10 +141,15 @@ allActions.forEach(el => el.addEventListener('click', ev => {
 }));
 
 function updateProgress(slider, progress, showTooltip) {
-    slider.style.setProperty('--slider-progress', progress);
+    // Ensure progress is always an integer
+    const rounded = Math.round(progress);
+
+    slider.style.setProperty('--slider-progress', rounded);
+
     if (showTooltip !== undefined) {
         if (showTooltip) {
-            slider.dataset.tooltip = progress;
+            // Tooltip should show the same rounded integer
+            slider.dataset.tooltip = rounded;
         } else {
             slider.dataset.tooltip = "";
         }
@@ -152,8 +157,9 @@ function updateProgress(slider, progress, showTooltip) {
 }
 
 function getProgress(slider) {
+    // Parse and round the current progress value
     const progress = +window.getComputedStyle(slider).getPropertyValue('--slider-progress');
-    return progress;
+    return Math.round(progress);
 }
 
 document.querySelectorAll('.slider').forEach(el => {
